@@ -1,6 +1,7 @@
 const pool = require('../db');
 
 const getAllActions = async (req, res) => {
+
   try {
     const numberOfQueries = req.query.number || 1; // Số lần truy vấn mặc định là 1 nếu không có tham số
     const itemsPerQuery = 60;
@@ -26,8 +27,9 @@ const getAllActions = async (req, res) => {
   }
 };
 
-const handleSortingAsc = async (req, res) => {
+const handleSortingAscDesc = async (req, res) => {
   try {
+
     const numberOfQueries = req.query.number || 1;
     const type = req.query.type;
     const sortType = req.query.sortType;
@@ -97,7 +99,7 @@ const insertAction = async (req, res) => {
 module.exports = {
   getAllActions,
   insertAction,
-  handleSortingAsc,
+  handleSortingAscDesc,
   handleSortingChosenOne
 };
 

@@ -6,6 +6,6 @@ const actionController = require('../controllers/actionController');
 // Route để lấy toàn bộ dữ liệu từ bảng sensor
 router.get('/getAllActions', actionController.getAllActions);
 router.post('/insertAction', actionController.insertAction);
-router.get('/handleSortingAsc', actionController.handleSortingAsc);
+router.get('/handleSortingAscDesc', actionController.handleSortingAscDesc);
 router.get('/handleSortingChosenOne', actionController.handleSortingChosenOne);
 module.exports = router;

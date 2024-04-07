@@ -6,4 +6,5 @@ const sensorController = require('../controllers/sensorController');
 // Route để lấy toàn bộ dữ liệu từ bảng sensor
 router.get('/getAllSensors', sensorController.getAllSensors);
 router.post('/insertSensor', sensorController.insertSensor);
+router.get('/handleSortingAscDesc', sensorController.handleSortingAscDesc);
 module.exports = router;
