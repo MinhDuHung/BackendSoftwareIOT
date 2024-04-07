@@ -33,6 +33,7 @@ const handleSortingAscDesc = async (req, res) => {
     const numberOfQueries = req.query.number || 1;
     const type = req.query.type;
     const sortType = req.query.sortType;
+    
     const itemsPerQuery = 60;
     let allResults = [];
     const offset = (numberOfQueries - 1) * itemsPerQuery;
