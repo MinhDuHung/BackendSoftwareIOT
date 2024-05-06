@@ -1,26 +1,24 @@
 const pool = require('../db');
 
+const DEFAULT_ITEMS_PER_QUERY = 60;
+
+const chunkResults = (results) => {
+  const chunkedResults = [];
+  for (let j = 0; j < results.length; j += 12) {
+    const chunk = results.slice(j, j + 12);
+    chunkedResults.push(chunk);
+  }
+  return chunkedResults;
+};
+
 const getAllActions = async (req, res) => {
-
   try {
-    const numberOfQueries = req.query.number || 1; // Số lần truy vấn mặc định là 1 nếu không có tham số
-    const itemsPerQuery = 60;
-    let allResults = [];
-
-    const offset = (numberOfQueries - 1) * itemsPerQuery;
-    const query = `SELECT * FROM action ORDER BY datetime DESC LIMIT ${offset}, ${itemsPerQuery}`;
+    const numberOfQueries = req.query.numberOfQueries || 1;
+    const offset = (numberOfQueries - 1) * DEFAULT_ITEMS_PER_QUERY;
+    const query = `SELECT * FROM action ORDER BY datetime DESC LIMIT ${offset}, ${DEFAULT_ITEMS_PER_QUERY}`;
     const [results] = await pool.query(query);
-
-    // Chia nhỏ mảng thành các mảng con với kích thước 12 bản ghi mỗi mảng
-    const chunkedResults = [];
-    for (let j = 0; j < results.length; j += 12) {
-      const chunk = results.slice(j, j + 12);
-      chunkedResults.push(chunk);
-    }
-
-    allResults = allResults.concat(chunkedResults); // Sử dụng concat để chèn kết quả mới vào đầu mảng
-
-    res.status(200).json(allResults);
+    const chunkedResults = chunkResults(results);
+    res.status(200).json(chunkedResults);
   } catch (error) {
     console.error('Error executing MySQL query:', error);
     res.status(500).send('Internal Server Error');
@@ -29,31 +27,20 @@ const getAllActions = async (req, res) => {
 
 const handleSortingAscDesc = async (req, res) => {
   try {
-
-    const numberOfQueries = req.query.number || 1;
+    const numberOfQueries = req.query.numberOfQueries || 1;
     const type = req.query.type;
     const sortType = req.query.sortType;
-    
-    const itemsPerQuery = 60;
-    let allResults = [];
-    const offset = (numberOfQueries - 1) * itemsPerQuery;
+    const offset = (numberOfQueries - 1) * DEFAULT_ITEMS_PER_QUERY;
     let orderByClause = '';
     if (type === 'datetime') {
       orderByClause = `ORDER BY STR_TO_DATE(datetime, "%d/%m/%Y %H:%i:%s") ${sortType}`;
     } else {
       orderByClause = `ORDER BY ${type} ${sortType}`;
     }
-    const query = `SELECT * FROM action ${orderByClause} LIMIT ${offset}, ${itemsPerQuery}`;
+    const query = `SELECT * FROM action ${orderByClause} LIMIT ${offset}, ${DEFAULT_ITEMS_PER_QUERY}`;
     const [results] = await pool.query(query);
-    const chunkedResults = [];
-    for (let j = 0; j < results.length; j += 12) {
-      const chunk = results.slice(j, j + 12);
-      chunkedResults.push(chunk);
-    }
-
-    allResults = allResults.concat(chunkedResults);
-
-    res.status(200).json(allResults);
+    const chunkedResults = chunkResults(results);
+    res.status(200).json(chunkedResults);
   } catch (error) {
     console.error('Error executing MySQL query:', error);
     res.status(500).send('Internal Server Error');
@@ -62,23 +49,14 @@ const handleSortingAscDesc = async (req, res) => {
 
 const handleSortingChosenOne = async (req, res) => {
   try {
-    const numberOfQueries = req.query.number || 1;
+    const numberOfQueries = req.query.numberOfQueries || 1;
     const type = req.query.type;
     const action = req.query.action;
-    const itemsPerQuery = 60;
-    let allResults = [];
-    const offset = (numberOfQueries - 1) * itemsPerQuery;
-    const query = `SELECT * FROM action WHERE ${type} = ${action} LIMIT ${offset}, ${itemsPerQuery}`;
+    const offset = (numberOfQueries - 1) * DEFAULT_ITEMS_PER_QUERY;
+    const query = `SELECT * FROM action WHERE ${type} = "${action}" LIMIT ${offset}, ${DEFAULT_ITEMS_PER_QUERY}`;
     const [results] = await pool.query(query);
-    const chunkedResults = [];
-    for (let j = 0; j < results.length; j += 12) {
-      const chunk = results.slice(j, j + 12);
-      chunkedResults.push(chunk);
-    }
-
-    allResults = allResults.concat(chunkedResults);
-
-    res.status(200).json(allResults);
+    const chunkedResults = chunkResults(results);
+    res.status(200).json(chunkedResults);
   } catch (error) {
     console.error('Error executing MySQL query:', error);
     res.status(500).send('Internal Server Error');
@@ -97,10 +75,48 @@ const insertAction = async (req, res) => {
   }
 };
 
+const handleSearchByCharacters = async (req, res) => {
+  try {
+    const numberOfQueries = req.query.numberOfQueries || 1;
+    const searchKeyword = req.query.keyword;
+    const searchKeywordLower = searchKeyword ? searchKeyword.toLowerCase() : '';
+    const offset = (numberOfQueries - 1) * DEFAULT_ITEMS_PER_QUERY;
+    let query = '';
+    if (searchKeyword) {
+      if (req.query.field) {
+        const field = req.query.field;
+        query = `SELECT * FROM action WHERE LOWER(${field}) LIKE '%${searchKeywordLower}%' LIMIT ${offset}, ${DEFAULT_ITEMS_PER_QUERY}`;
+      } else {
+        query = `SELECT * FROM action WHERE LOWER(id) LIKE '%${searchKeywordLower}%' OR LOWER(device) LIKE '%${searchKeywordLower}%' OR LOWER(mode) LIKE '%${searchKeywordLower}%' OR LOWER(datetime) LIKE '%${searchKeywordLower}%' LIMIT ${offset}, ${DEFAULT_ITEMS_PER_QUERY}`;
+      }
+    } else {
+      query = `SELECT * FROM action LIMIT ${offset}, ${DEFAULT_ITEMS_PER_QUERY}`;
+    }
+    const [results] = await pool.query(query);
+    const chunkedResults = chunkResults(results);
+    res.status(200).json(chunkedResults);
+  } catch (error) {
+    console.error('Error executing MySQL query:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
+const updateDeviceAttributeForAll = async (req, res) => {
+  try {
+    const query = 'UPDATE action SET mode = IF(mode = 1, "On", "Off")';
+    await pool.query(query);
+    res.status(200).json({ message: 'All device attributes updated successfully' });
+  } catch (error) {
+    console.error('Error executing MySQL query:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
 module.exports = {
   getAllActions,
   insertAction,
   handleSortingAscDesc,
-  handleSortingChosenOne
+  handleSortingChosenOne,
+  handleSearchByCharacters,
+  updateDeviceAttributeForAll
 };
-
